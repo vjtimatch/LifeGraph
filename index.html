@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Life Graph</title>
+<style>
+:root{--bg:#fbfbfd;--card:#fff;--text:#1d1d1f;--sub:#6e6e73;--line:rgba(0,0,0,.09);--hi:#0a84ff;--lo:#ff9f0a;--ease:cubic-bezier(.23,1,.32,1);color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--card:#1c1c1e;--text:#f5f5f7;--sub:#98989d;--line:rgba(255,255,255,.14);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#000;--card:#1c1c1e;--text:#f5f5f7;--sub:#98989d;--line:rgba(255,255,255,.14);color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:400 1rem/1.5 -apple-system,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:760px;margin:0 auto;padding:2.5rem 1.25rem 4rem}
+h1{font-size:clamp(2rem,6vw,3rem);line-height:1.05;letter-spacing:-.03em;font-weight:700;margin:0 0 .5rem}
+.sub{color:var(--sub);margin:0 0 2rem;font-size:1.0625rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px}
+.rise{animation:rise 420ms var(--ease) both}
+.rise:nth-child(2){animation-delay:40ms}.rise:nth-child(3){animation-delay:80ms}.rise:nth-child(4){animation-delay:120ms}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.chart{position:relative;padding:.5rem 0;margin-bottom:1rem}
+svg{display:block;width:100%;height:340px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+svg text{font:500 11px -apple-system,system-ui,sans-serif;fill:var(--sub)}
+.ln{fill:none;stroke:url(#g);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.ln.draw{stroke-dasharray:1;animation:dr 900ms var(--ease) both}
+@keyframes dr{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+.dot{stroke:var(--card);stroke-width:2;transform-box:fill-box;transform-origin:center;transition:transform 150ms var(--ease)}
+.dot.sel{transform:scale(1.5)}
+.empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--sub);pointer-events:none;text-align:center;padding:0 2rem}
+.tip{position:absolute;pointer-events:none;width:190px;transform:translate(-50%,-100%) scale(.96);opacity:0;transition:opacity 150ms var(--ease),transform 150ms var(--ease);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:.625rem .75rem;font-size:.8125rem;line-height:1.35;backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%)}
+.tip.show{opacity:1;transform:translate(-50%,-100%) scale(1)}
+.tip .tm{color:var(--sub);font-size:.75rem;margin-bottom:.125rem}
+.tip div+div{margin-top:.25rem}
+.tip b{font-weight:600;margin-left:.25rem}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1rem}
+.st{padding:1rem;display:flex;flex-direction:column;gap:.125rem;min-width:0}
+.k{font-size:.75rem;color:var(--sub)}
+.v{font-size:2rem;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.c{font-size:.8125rem;color:var(--sub);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+form{padding:1.25rem;display:grid;gap:.875rem;margin-bottom:2rem}
+label{font-size:.75rem;color:var(--sub);display:block;margin-bottom:.25rem}
+input[type=text],select{width:100%;font:inherit;font-size:1rem;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:12px;padding:.625rem .75rem;outline:none;transition:border-color 150ms ease}
+input[type=text]:focus,select:focus{border-color:var(--hi)}
+.ym{display:grid;grid-template-columns:3fr 2fr;gap:.5rem}
+select{background:var(--card)}
+input[type=range]{width:100%;accent-color:var(--hi);margin:.25rem 0 0}
+.row{display:flex;justify-content:space-between;align-items:baseline}
+.row output{font-weight:600;font-size:.9375rem}
+button{font:inherit;cursor:pointer;border:0;transition:transform 100ms ease-out,opacity 150ms ease}
+button:active{transform:scale(.97)}
+.btn{background:var(--hi);color:#fff;font-weight:600;border-radius:980px;padding:.75rem 1.25rem}
+.link{background:none;color:var(--hi);padding:.5rem 0;font-size:.9375rem}
+ul{list-style:none;margin:0 0 1.5rem;padding:0}
+li{display:flex;gap:1rem;align-items:center;padding:.875rem 0;border-top:1px solid var(--line)}
+li .t{flex:1;min-width:0;overflow-wrap:anywhere}
+li .m{color:var(--sub);font-size:.8125rem}
+.pill{font-weight:600;font-size:.9375rem;min-width:2.25rem;text-align:right}
+li button{background:none;color:var(--sub);font-size:.8125rem;padding:.25rem}
+#setup{max-width:420px;margin:12vh auto 0;padding:1.5rem;display:grid;gap:1rem}
+#setup h1{font-size:2rem}
+[hidden]{display:none!important}
+@media(hover:hover) and (pointer:fine){.btn:hover{opacity:.88}li button:hover{color:var(--text)}}
+@media(max-width:520px){svg{height:290px}.v{font-size:1.5rem}.st{padding:.75rem}}
+@media(prefers-reduced-motion:reduce){.rise{animation:fadein 200ms ease both}.ln.draw{animation:fadein 300ms ease both;stroke-dasharray:none}.tip,.tip.show{transform:translate(-50%,-100%)}@keyframes fadein{from{opacity:0}to{opacity:1}}}
+</style>
+</head>
+<body>
+<main>
+  <section id="app">
+    <div class="rise">
+      <h1>Life Graph</h1>
+      <p class="sub" id="range"></p>
+    </div>
+    <div class="card chart rise" id="chart">
+      <svg id="svg" role="img" aria-label="Line graph of how your life felt over time"></svg>
+      <div class="empty" id="empty">Add your first moment below</div>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="stats rise" id="stats"></div>
+    <form id="f" class="card rise">
+      <div><label for="mm">Month and year</label><div class="ym"><select id="mm" aria-label="Month"></select><select id="yy" aria-label="Year"></select></div></div>
+      <div><label for="tx">What happened</label><input id="tx" type="text" maxlength="120" placeholder="Moved to a new city" required autocomplete="off"></div>
+      <div>
+        <div class="row"><label for="sc" style="margin:0">How peak was it</label><output id="out"></output></div>
+        <input id="sc" type="range" min="0" max="100" value="50">
+      </div>
+      <button class="btn" type="submit">Add to graph</button>
+    </form>
+    <ul id="list"></ul>
+  </section>
+</main>
+
+<script>
+const KEY="lifegraph.v1";
+let S={birth:"",items:[]};
+try{const r=localStorage.getItem(KEY);if(r)S=JSON.parse(r)}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const n=new Date();
+const NOW=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0");
+const start=()=>{const a=S.items.map(i=>i.ym).sort();return a.length?a[0]:NOW};
+const T=ym=>{const[y,m]=ym.split("-").map(Number);return Date.UTC(y,m-1,15)};
+const fmt=t=>new Date(t).toLocaleString("en",{month:"short",year:"numeric",timeZone:"UTC"});
+const word=v=>v<20?"Very low":v<45?"Sad":v<56?"Average":v<80?"Good":v<95?"Great":"Peak moment";
+const col=v=>v>=50?"var(--hi)":"var(--lo)";
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let P=[],sel=-1,drawn=false;
+
+function mono(p){
+  const k=p.length;if(k<2)return"";
+  const d=[],m=[];
+  for(let i=0;i<k-1;i++)d[i]=(p[i+1].py-p[i].py)/(p[i+1].px-p[i].px);
+  m[0]=d[0];m[k-1]=d[k-2];
+  for(let i=1;i<k-1;i++)m[i]=d[i-1]*d[i]<=0?0:(d[i-1]+d[i])/2;
+  for(let i=0;i<k-1;i++){
+    if(d[i]===0){m[i]=m[i+1]=0;continue}
+    const a=m[i]/d[i],b=m[i+1]/d[i],s=a*a+b*b;
+    if(s>9){const q=3/Math.sqrt(s);m[i]=q*a*d[i];m[i+1]=q*b*d[i]}
+  }
+  let s=`M${p[0].px},${p[0].py}`;
+  for(let i=0;i<k-1;i++){
+    const h=(p[i+1].px-p[i].px)/3;
+    s+=`C${p[i].px+h},${p[i].py+m[i]*h} ${p[i+1].px-h},${p[i+1].py-m[i+1]*h} ${p[i+1].px},${p[i+1].py}`;
+  }
+  return s;
+}
+
+function data(){
+  const items=S.items.filter(i=>i.ym<=NOW);
+  const g={};
+  items.forEach(i=>{(g[i.ym]=g[i.ym]||[]).push(i)});
+  const pts=Object.keys(g).sort().map(ym=>{
+    const it=g[ym].slice().sort((a,b)=>b.s-a.s);
+    return{ym,t:T(ym),v:Math.round(it.reduce((a,b)=>a+b.s,0)/it.length),it};
+  });
+  return{items,pts};
+}
+
+function draw(){
+  const svg=$("svg"),W=svg.clientWidth||600,H=svg.clientHeight||340;
+  const L=32,R=16,Tp=20,B=28;
+  const t0=T(start()),t1=Math.max(T(NOW),t0+864e5*30);
+  const X=v=>L+(v-t0)/(t1-t0)*(W-L-R),Y=v=>Tp+(100-v)/100*(H-Tp-B);
+  const{pts}=data();
+  pts.forEach(p=>{p.px=X(p.t);p.py=Y(p.v)});
+  P=pts;
+  let h=`<defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${Y(100)}" y2="${Y(0)}"><stop offset="0" style="stop-color:var(--hi)"/><stop offset=".42" style="stop-color:var(--hi)"/><stop offset=".58" style="stop-color:var(--lo)"/><stop offset="1" style="stop-color:var(--lo)"/></linearGradient></defs>`;
+  [100,50,0].forEach(v=>{
+    h+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"${v===50?' stroke-dasharray="3 5"':""}/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end">${v}</text>`;
+  });
+  const y0=new Date(t0).getUTCFullYear(),y1=new Date(t1).getUTCFullYear();
+  const step=[1,2,5,10,20].find(s=>(y1-y0)/s<=6)||20;
+  for(let y=Math.ceil(y0/step)*step;y<=y1;y+=step){
+    const x=X(Date.UTC(y,0,1));
+    if(x>=L+6&&x<=W-R-10)h+=`<text x="${x}" y="${H-8}" text-anchor="middle">${y}</text>`;
+  }
+  if(pts.length>1)h+=`<path class="ln${!drawn&&!reduce?" draw":""}" pathLength="1" d="${mono(pts)}"/>`;
+  let pk=-1,lo=-1;
+  pts.forEach((p,i)=>{if(pk<0||p.v>pts[pk].v)pk=i;if(lo<0||p.v<pts[lo].v)lo=i});
+  pts.forEach((p,i)=>{
+    const big=i===pk||i===lo;
+    h+=`<circle class="dot${i===sel?" sel":""}" cx="${p.px}" cy="${p.py}" r="${big?6:4.5}" fill="${col(p.v)}"/>`;
+  });
+  const boxes=pts.map(p=>({x0:p.px-7,x1:p.px+7,y0:p.py-7,y1:p.py+7}));
+  const order=pts.map((p,i)=>i).sort((a,b)=>((b===pk||b===lo)-(a===pk||a===lo))||Math.abs(pts[b].v-50)-Math.abs(pts[a].v-50));
+  order.forEach(i=>{
+    const p=pts[i],raw=p.it[0].t,s=raw.length>16?raw.slice(0,15)+"…":raw,w=s.length*5.9;
+    const x0=Math.max(L,Math.min(p.px-w/2,W-R-w)),strong=i===pk||i===lo;
+    for(const d of(p.v>=50?[-1,1]:[1,-1])){
+      const by=d<0?p.py-13:p.py+21;
+      const b={x0:x0-3,x1:x0+w+3,y0:by-11,y1:by+3};
+      if(b.y0<2||b.y1>H-B+6)continue;
+      if(boxes.some(o=>b.x0<o.x1&&b.x1>o.x0&&b.y0<o.y1&&b.y1>o.y0))continue;
+      boxes.push(b);
+      h+=`<text x="${x0}" y="${by}" style="fill:${strong?col(p.v):"var(--text)"};font-weight:${strong?600:500}">${esc(s)}</text>`;
+      break;
+    }
+  });
+  svg.innerHTML=h;
+  $("empty").hidden=pts.length>0;
+  if(pts.length)drawn=true;
+  if(sel>=0&&sel<P.length)showTip(sel);else hideTip();
+}
+
+function showTip(i){
+  sel=i;const p=P[i],tip=$("tip"),W=$("svg").clientWidth;
+  tip.innerHTML=`<div class="tm">${fmt(p.t)}</div>`+p.it.map(x=>`<div>${esc(x.t)}<b style="color:${col(x.s)}">${x.s}</b></div>`).join("");
+  tip.style.left=Math.min(Math.max(p.px,100),W-100)+"px";
+  tip.style.top=(p.py-14)+"px";
+  tip.classList.add("show");
+  document.querySelectorAll(".dot").forEach((d,j)=>d.classList.toggle("sel",j===i));
+}
+function hideTip(){sel=-1;$("tip").classList.remove("show");document.querySelectorAll(".dot.sel").forEach(d=>d.classList.remove("sel"))}
+
+function pick(e){
+  if(!P.length)return;
+  const x=e.clientX-$("svg").getBoundingClientRect().left;
+  let b=0;P.forEach((p,i)=>{if(Math.abs(p.px-x)<Math.abs(P[b].px-x))b=i});
+  if(b!==sel)showTip(b);
+}
+$("svg").addEventListener("pointermove",e=>{if(e.pointerType==="mouse")pick(e)});
+$("svg").addEventListener("pointerdown",pick);
+$("svg").addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")hideTip()});
+
+function render(){
+  const{items,pts}=data();
+  $("range").textContent=items.length?`${fmt(T(start()))} to ${fmt(T(NOW))}`:"Your life, month by month";
+  const st=$("stats");
+  if(pts.length){
+    let pk=pts[0],lo=pts[0];pts.forEach(p=>{if(p.v>pk.v)pk=p;if(p.v<lo.v)lo=p});
+    const avg=Math.round(items.reduce((a,b)=>a+b.s,0)/items.length);
+    const box=(k,v,c,color)=>`<div class="card st"><span class="k">${k}</span><span class="v" style="color:${color}">${v}</span><span class="c">${c}</span></div>`;
+    st.innerHTML=box("Peak moment",pk.v,`${fmt(pk.t)} · ${esc(pk.it[0].t)}`,"var(--hi)")+box("Lowest point",lo.v,`${fmt(lo.t)} · ${esc(lo.it[lo.it.length-1].t)}`,"var(--lo)")+box("Average",avg,word(avg),"var(--text)");
+    st.hidden=false;
+  }else st.hidden=true;
+  $("list").innerHTML=items.slice().sort((a,b)=>b.ym.localeCompare(a.ym)).map(i=>`<li><div class="t">${esc(i.t)}<div class="m">${fmt(T(i.ym))}</div></div><span class="pill" style="color:${col(i.s)}">${i.s}</span><button data-id="${i.id}" aria-label="Remove ${esc(i.t)}">Remove</button></li>`).join("");
+  draw();
+}
+
+$("list").addEventListener("click",e=>{
+  const id=e.target.dataset&&e.target.dataset.id;if(!id)return;
+  S.items=S.items.filter(i=>i.id!==id);save();sel=-1;render();
+});
+$("sc").addEventListener("input",()=>{$("out").textContent=`${$("sc").value} · ${word(+$("sc").value)}`});
+$("f").addEventListener("submit",e=>{
+  e.preventDefault();
+  const ym=$("yy").value+"-"+$("mm").value,t=$("tx").value.trim();
+  if(!t||ym>NOW){$("mm").setCustomValidity("Pick a month up to today");$("mm").reportValidity();return}
+  S.items.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),ym,t,s:+$("sc").value});
+  save();$("tx").value="";$("sc").value=50;$("sc").dispatchEvent(new Event("input"));$("tx").focus();render();
+});
+$("mm").addEventListener("input",()=>$("mm").setCustomValidity(""));$("yy").addEventListener("input",()=>$("mm").setCustomValidity(""));
+
+const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+$("mm").innerHTML=MN.map((m,i)=>`<option value="${String(i+1).padStart(2,"0")}">${m}</option>`).join("");
+const cy=n.getFullYear();let yo="";for(let y=cy;y>=cy-100;y--)yo+=`<option>${y}</option>`;
+$("yy").innerHTML=yo;$("mm").value=NOW.slice(5);$("yy").value=NOW.slice(0,4);
+$("sc").dispatchEvent(new Event("input"));render();
+new ResizeObserver(()=>requestAnimationFrame(draw)).observe($("chart"));
+</script>
+</body>
+</html>
